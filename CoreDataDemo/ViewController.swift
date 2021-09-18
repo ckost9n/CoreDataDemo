@@ -14,7 +14,7 @@ class ViewController: UITableViewController {
 //    private let mainTableView = UIView()
     private let cellId = "cell"
     private var tasks: [Task] = []
-    private let appDelegate = UIApplication.shared.delegate as! AppDelegate
+    private let managedContext = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     private let colorBlue = UIColor(
         displayP3Red: 21/255,
         green: 101/255,
@@ -28,6 +28,11 @@ class ViewController: UITableViewController {
         setupView()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellId)
         
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        fetchData()
     }
 
     private func setupView() {
@@ -99,7 +104,6 @@ class ViewController: UITableViewController {
     }
     
     private func save(_ taskName: String) {
-        let managedContext = appDelegate.persistentContainer.viewContext
         
         guard let entityDescription = NSEntityDescription.entity(forEntityName: "Task", in: managedContext) else { return }
         let task = NSManagedObject(entity: entityDescription, insertInto: managedContext) as! Task
@@ -113,6 +117,17 @@ class ViewController: UITableViewController {
                 at: [IndexPath(row: self.tasks.count - 1, section: 0)],
                 with: .automatic
             )
+        } catch let error {
+            print(error)
+        }
+        
+    }
+    
+    private func fetchData() {
+        let fetchRequest: NSFetchRequest<Task> = Task.fetchRequest()
+        
+        do {
+            tasks = try managedContext.fetch(fetchRequest)
         } catch let error {
             print(error)
         }
