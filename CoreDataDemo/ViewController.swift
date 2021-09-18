@@ -73,6 +73,7 @@ class ViewController: UITableViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "Add", style: .plain, target: self, action: #selector(addNewTask)
         )
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Delete", style: .plain, target: self, action: #selector(deleteAllTask))
         
         navigationController?.navigationBar.tintColor = .white
         
@@ -80,6 +81,23 @@ class ViewController: UITableViewController {
     
     @objc private func addNewTask() {
         showAlert(title: "New Taks", message: "What do you want to do?")
+    }
+    
+    @objc private func deleteAllTask() {
+        
+        for task in tasks {
+            managedContext.delete(task)
+            tasks = []
+        }
+        
+        do {
+            try managedContext.save()
+            
+        } catch let error {
+            print(error)
+        }
+        
+        tableView.reloadData()
     }
     
     private func showAlert(title: String, message: String) {
@@ -90,7 +108,6 @@ class ViewController: UITableViewController {
                 return
             }
             self.save(task)
-            
         }
         
         
