@@ -6,13 +6,15 @@
 //
 
 import UIKit
+import CoreData
 
 class ViewController: UITableViewController {
     
     private let mainView = UIView()
 //    private let mainTableView = UIView()
     private let cellId = "cell"
-    private var tasks: [String] = []
+    private var tasks: [Task] = []
+    private let appDelegate = UIApplication.shared.delegate as! AppDelegate
     private let colorBlue = UIColor(
         displayP3Red: 21/255,
         green: 101/255,
@@ -82,11 +84,8 @@ class ViewController: UITableViewController {
                 print("Text field is empty")
                 return
             }
-            self.tasks.append(task)
+            self.save(task)
             
-            self.tableView.insertRows(at: [IndexPath(row: self.tasks.count - 1, section: 0)],
-                                      with: .automatic
-            )
         }
         
         
@@ -97,6 +96,27 @@ class ViewController: UITableViewController {
         alert.addAction(cancelAction)
         
         present(alert, animated: true)
+    }
+    
+    private func save(_ taskName: String) {
+        let managedContext = appDelegate.persistentContainer.viewContext
+        
+        guard let entityDescription = NSEntityDescription.entity(forEntityName: "Task", in: managedContext) else { return }
+        let task = NSManagedObject(entity: entityDescription, insertInto: managedContext) as! Task
+        
+        task.name = taskName
+        
+        do {
+            try managedContext.save()
+            tasks.append(task)
+            self.tableView.insertRows(
+                at: [IndexPath(row: self.tasks.count - 1, section: 0)],
+                with: .automatic
+            )
+        } catch let error {
+            print(error)
+        }
+        
     }
     
 }
@@ -111,7 +131,7 @@ extension ViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: cellId, for: indexPath)
 
         let task = tasks[indexPath.row]
-        cell.textLabel?.text = task
+        cell.textLabel?.text = task.name
         
         
         return cell
