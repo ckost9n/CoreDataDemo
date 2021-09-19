@@ -11,7 +11,6 @@ import CoreData
 class ViewController: UITableViewController {
     
     private let mainView = UIView()
-//    private let mainTableView = UIView()
     private let cellId = "cell"
     private var tasks: [Task] = []
     private let managedContext = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
@@ -45,19 +44,6 @@ class ViewController: UITableViewController {
         
     }
     
-//    private func addViewInSafeArea() {
-//        mainView.backgroundColor = .green
-//        mainView.alpha = 1
-//        self.view.addSubview(mainView)
-//        mainView.translatesAutoresizingMaskIntoConstraints = false
-//
-//        let guide = self.view.safeAreaLayoutGuide
-//        mainView.trailingAnchor.constraint(equalTo: guide.trailingAnchor).isActive = true
-//        mainView.leadingAnchor.constraint(equalTo: guide.leadingAnchor).isActive = true
-//        mainView.topAnchor.constraint(equalTo: guide.topAnchor).isActive = true
-//        mainView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
-//    }
-    
     private func setupNavigationBar() {
         
         title = "Tasks list"
@@ -73,7 +59,7 @@ class ViewController: UITableViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "Add", style: .plain, target: self, action: #selector(addNewTask)
         )
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Delete", style: .plain, target: self, action: #selector(deleteAllTask))
+//        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Delete", style: .plain, target: self, action: #selector(deleteAllTask))
         
         navigationController?.navigationBar.tintColor = .white
         
@@ -100,58 +86,9 @@ class ViewController: UITableViewController {
         tableView.reloadData()
     }
     
-    private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        let saveAction = UIAlertAction(title: "Save", style: .default) { _ in
-            guard let task = alert.textFields?.first?.text, !task.isEmpty else {
-                print("Text field is empty")
-                return
-            }
-            self.save(task)
-        }
-        
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        
-        alert.addTextField()
-        alert.addAction(saveAction)
-        alert.addAction(cancelAction)
-        
-        present(alert, animated: true)
-    }
-    
-    private func save(_ taskName: String) {
-        
-        guard let entityDescription = NSEntityDescription.entity(forEntityName: "Task", in: managedContext) else { return }
-        let task = NSManagedObject(entity: entityDescription, insertInto: managedContext) as! Task
-        
-        task.name = taskName
-        
-        do {
-            try managedContext.save()
-            tasks.append(task)
-            self.tableView.insertRows(
-                at: [IndexPath(row: self.tasks.count - 1, section: 0)],
-                with: .automatic
-            )
-        } catch let error {
-            print(error)
-        }
-        
-    }
-    
-    private func fetchData() {
-        let fetchRequest: NSFetchRequest<Task> = Task.fetchRequest()
-        
-        do {
-            tasks = try managedContext.fetch(fetchRequest)
-        } catch let error {
-            print(error)
-        }
-        
-    }
-    
 }
+
+// MARK: - Setup Table View Cell
 
 extension ViewController {
 
@@ -169,5 +106,130 @@ extension ViewController {
         return cell
     }
 
+}
+
+// MARK: - Editing and Delete method in Table View
+
+extension ViewController {
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let cell = tableView.dequeueReusableCell(withIdentifier: cellId, for: indexPath)
+        
+        let task = tasks[indexPath.row]
+        showAlert(title: "Edit task", message: "Enter new value", currentTask: task) { (newValue) in
+            
+            cell.textLabel?.text = newValue
+            self.tableView.reloadRows(at: [indexPath], with: .automatic)
+            
+        }
+        
+    }
+    
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
+        let task = tasks[indexPath.row]
+        
+        if editingStyle == .delete {
+            deleteTask(task, indexPath: indexPath)
+        }
+    }
+}
+
+// MARK: - Work with Data Base
+
+extension ViewController {
+    
+    private func fetchData() {
+        let fetchRequest: NSFetchRequest<Task> = Task.fetchRequest()
+        
+        do {
+            tasks = try managedContext.fetch(fetchRequest)
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    private func saveTask(_ taskName: String) {
+        
+        guard let entityDescription = NSEntityDescription.entity(forEntityName: "Task", in: managedContext) else { return }
+        let task = NSManagedObject(entity: entityDescription, insertInto: managedContext) as! Task
+        
+        task.name = taskName
+        
+        do {
+            try managedContext.save()
+            tasks.append(task)
+            self.tableView.insertRows(
+                at: [IndexPath(row: self.tasks.count - 1, section: 0)],
+                with: .automatic
+            )
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    private func editTask(_ task: Task, newName: String) {
+        do {
+            task.name = newName
+            try managedContext.save()
+        } catch let error {
+            print("Failed to save task", error)
+        }
+    }
+    
+    private func deleteTask(_ task: Task, indexPath: IndexPath) {
+        
+        managedContext.delete(task)
+        
+        do {
+            try managedContext.save()
+            tasks.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+        } catch let error {
+            print("Error: \(error)")
+        }
+    }
+    
+}
+
+// MARK: - Setup Alert Controller
+
+extension ViewController {
+    
+    private func showAlert(title: String,
+                           message: String,
+                           currentTask: Task? = nil,
+                           completion: ((String) -> Void)? = nil) {
+        
+        let alert = UIAlertController(title: title,
+                                      message: message,
+                                      preferredStyle: .alert)
+        
+        let saveAction = UIAlertAction(title: "Save", style: .default) { _ in
+            
+            guard let newValue = alert.textFields?.first?.text, !newValue.isEmpty else { return }
+            
+            currentTask != nil ? self.editTask(currentTask!, newName: newValue) : self.saveTask(newValue)
+            if completion != nil { completion!(newValue) }
+            
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .destructive) { _ in
+            
+            
+            
+        }
+        
+        alert.addTextField()
+        alert.addAction(saveAction)
+        alert.addAction(cancelAction)
+        
+        if currentTask != nil {
+            alert.textFields?.first?.text = currentTask?.name
+        }
+        
+        present(alert, animated: true)
+    }
+    
 }
 
